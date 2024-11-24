@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <format>
+#include <iostream>
 #include <mutex>
 #include <print>
 #include <string>
@@ -21,7 +22,7 @@ class Logger {
     std::string log_entry =
         std::format(R"(ts="{}" level="{}" msg="{}")", CurrentTime(),
                     LevelToString(level), message);
-    std::println("{}", log_entry);
+    std::cout << log_entry << std::endl;
   }
 
   template <typename... Args>

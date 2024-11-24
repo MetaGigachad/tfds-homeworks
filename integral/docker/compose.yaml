@@ -1,0 +1,13 @@
+services:
+  master:
+    image: integral-master:1.0.0
+    restart: no
+    network_mode: host
+  worker1:
+    image: integral-worker:1.0.0
+    restart: no
+    network_mode: host
+  worker2:
+    image: integral-worker:1.0.0
+    restart: no
+    network_mode: host
