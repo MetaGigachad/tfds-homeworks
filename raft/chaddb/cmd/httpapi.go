@@ -6,6 +6,7 @@ import (
 	"ergo.services/ergo/act"
 	"ergo.services/ergo/gen"
 	"ergo.services/ergo/meta"
+    opt "chaddb/internal/options"
 )
 
 func factory_HttpApi() gen.ProcessBehavior {
@@ -31,12 +32,10 @@ func (w *HttpApi) Init(args ...any) (act.PoolOptions, error) {
 		return poolOptions, err
 	}
 
-	// add it to the mux. you can also use middleware functions:
-	// mux.Handle("/", middleware(root))
-	mux.Handle("/", root)
+	mux.Handle("/{id}", root)
 	w.Log().Info("started WebHandler to serve '/' (meta-process: %s)", rootid)
 
-	webOptions.Port = 9090
+	webOptions.Port = uint16(opt.ApiPort)
 	webOptions.Host = "localhost"
 
 	webOptions.Handler = mux

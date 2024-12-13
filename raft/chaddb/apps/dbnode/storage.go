@@ -42,6 +42,8 @@ type StorageActor struct {
 
 func (a *StorageActor) Init(args ...any) error {
 	a.Log().Info("started process with name %s and args %v", a.Name(), args)
+    a.data = make(map[string]string)
+
 	return nil
 }
 
@@ -58,14 +60,14 @@ type StorageDel struct {
     Key string
 }
 
+type KeyNotFound struct {
+}
+
 func (a *StorageActor) HandleMessage(from gen.PID, message any) error {
-	a.Log().Info("got message from %s", from)
 	return nil
 }
 
 func (a *StorageActor) HandleCall(from gen.PID, ref gen.Ref, request any) (any, error) {
-	a.Log().Info("got request from %s with reference %s", from, ref)
-
     switch request.(type) {
     case StorageGet:
         return a.HandleGet(from, request.(StorageGet));
@@ -83,16 +85,16 @@ func (a *StorageActor) HandleGet(from gen.PID, message StorageGet) (any, error) 
     if ok {
         return value, nil
     } else {
-        return nil, nil
+        return KeyNotFound{}, nil;
     }
 }
 
 func (a *StorageActor) HandleSet(from gen.PID, message StorageSet) (any, error) {
     a.data[message.Key] = message.Value
-    return nil, nil
+    return true, nil
 }
 
 func (a *StorageActor) HandleDel(from gen.PID, message StorageDel) (any, error) {
     delete(a.data, message.Key)
-    return nil, nil
+    return true, nil
 }

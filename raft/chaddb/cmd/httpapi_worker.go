@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"ergo.services/ergo/act"
 	"ergo.services/ergo/gen"
 	"net/http"
 	"chaddb/apps/dbnode"
+	. "chaddb/internal/utils"
 )
 
 func factory_HttpApiWebWorker() gen.ProcessBehavior {
@@ -17,28 +17,43 @@ type HttpApiWebWorker struct {
 	act.WebWorker
 }
 
-// Init invoked on a start this process.
 func (w *HttpApiWebWorker) Init(args ...any) error {
 	w.Log().Info("started web worker process with args %v", args)
 	return nil
 }
 
-// Handle GET requests. For the other HTTP methods (POST, PATCH, etc)
-// you need to add the accoring callback-method implementation. See act.WebWorkerBehavior.
-
 func (w *HttpApiWebWorker) HandleGet(from gen.PID, writer http.ResponseWriter, request *http.Request) error {
-	var buf bytes.Buffer
-
-	w.Log().Info("got HTTP request %q", request.URL.Path)
-    w.Call("storageactor", dbnode.StorageSet{Key: "hello", Value: "world"});
-    val, _ := w.Call("storageactor", dbnode.StorageGet{Key: "hello"})
-    w.Log().Info("Got value %d", val);
+    key := request.PathValue("id")
+	w.Log().Info("got HTTP GET for key %s", key)
+    val := Must1(w.Call(gen.Atom("storageactor"), dbnode.StorageGet{Key: key}))
+    if _, ok := val.(dbnode.KeyNotFound); ok {
+        writer.Header().Set("Content-Type", "text/plain")
+        writer.WriteHeader(404)
+        writer.Write([]byte("Key not found"))
+        return nil
+    }
 	writer.Header().Set("Content-Type", "application/json")
-	// response JSON message with information about this process
-	info, _ := w.Info()
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	enc.Encode(info)
-	writer.Write(buf.Bytes())
+    json.NewEncoder(writer).Encode(val)
+	return nil
+}
+
+func (w *HttpApiWebWorker) HandlePost(from gen.PID, writer http.ResponseWriter, request *http.Request) error {
+    key := request.PathValue("id");
+    var val string
+    json.NewDecoder(request.Body).Decode(&val)
+	w.Log().Info("got HTTP Post for key %s with value %s", key, val)
+    // Must1(w.Call(gen.Atom("storageactor"), dbnode.StorageSet{Key: key, Value: val}))
+    Must1(w.CallWithTimeout(gen.Atom("raftactor"), dbnode.AddEntry{Key: key, Value: val, Tombstone: false}, 10 * 1000))
+
+	writer.WriteHeader(200)
+	return nil
+}
+
+func (w *HttpApiWebWorker) HandleDelete(from gen.PID, writer http.ResponseWriter, request *http.Request) error {
+    key := request.PathValue("id");
+	w.Log().Info("got HTTP Delete for key %s", key)
+    // Must1(w.Call(gen.Atom("storageactor"), dbnode.StorageDel{Key: key}));
+    Must1(w.CallWithTimeout(gen.Atom("raftactor"), dbnode.AddEntry{Key: key, Tombstone: true}, 1000))
+	writer.WriteHeader(200)
 	return nil
 }
