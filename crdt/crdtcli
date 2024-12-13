@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Check if the first argument (port) is provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <port> {get|set|del} <key> [value]"
+  exit 1
+fi
+
+# Assign the port, action, key, and value
+port=$1
+action=$2
+key=$3
+value=$4
+
+# Base URL for the requests
+base_url="http://localhost:$port"
+
+case "$action" in
+  get)
+    if [ -z "$key" ]; then
+      echo "Usage: $0 <port> get <key>"
+      exit 1
+    fi
+    curl -X GET "$base_url/$key"
+    ;;
+  set)
+    if [ -z "$key" ] || [ -z "$value" ]; then
+      echo "Usage: $0 <port> set <key> <value>"
+      exit 1
+    fi
+    curl -X POST "$base_url/$key" \
+      -H "Content-Type: application/json" \
+      -d "\"$value\""
+    ;;
+  del)
+    if [ -z "$key" ]; then
+      echo "Usage: $0 <port> del <key>"
+      exit 1
+    fi
+    curl -X DELETE "$base_url/$key"
+    ;;
+  *)
+    echo "Invalid action: $action"
+    echo "Usage: $0 <port> {get|set|del} <key> [value]"
+    exit 1
+    ;;
+esac
