@@ -1,4 +1,4 @@
-package dbnode
+package crdtnode
 
 import (
 	"ergo.services/ergo/gen"
@@ -18,12 +18,8 @@ func (app *DbNode) Load(node gen.Node, args ...any) (gen.ApplicationSpec, error)
 		Mode:        gen.ApplicationModeTransient,
 		Group: []gen.ApplicationMemberSpec{
 			{
-				Name:    "raftsup",
-				Factory: factory_RaftSup,
-			},
-			{
-				Name:    "storagesup",
-				Factory: factory_StorageSup,
+				Name:    "crdtsup",
+				Factory: factory_CrdtSup,
 			},
 		},
 	}, nil

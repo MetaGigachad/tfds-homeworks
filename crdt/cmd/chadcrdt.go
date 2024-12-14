@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"chadcrdt/apps/dbnode"
+	"chadcrdt/apps/crdtnode"
 	opt "chadcrdt/internal/options"
 
 	"ergo.services/application/observer"
@@ -22,12 +22,14 @@ func main() {
 	// create applications that must be started
 	apps := []gen.ApplicationBehavior{
 		observer.CreateApp(observer.Options{Port: uint16(opt.ObserverPort)}),
-		dbnode.CreateDbNode(),
+		crdtnode.CreateDbNode(),
 	}
 	options.Applications = apps
 
 	// set network options
 	options.Network.Cookie = opt.NodeCookie
+
+    options.Log.DefaultLogger.IncludeBehavior = true
 
 	// starting node
 	node, err := ergo.StartNode(gen.Atom(opt.MakeNodeName(opt.NodeId)), options)

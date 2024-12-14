@@ -28,20 +28,13 @@ case "$action" in
       echo "Usage: $0 <port> set <key> <value>"
       exit 1
     fi
-    curl -X POST "$base_url/$key" \
+    curl -X PUT "$base_url/$key" \
       -H "Content-Type: application/json" \
       -d "\"$value\""
     ;;
-  del)
-    if [ -z "$key" ]; then
-      echo "Usage: $0 <port> del <key>"
-      exit 1
-    fi
-    curl -X DELETE "$base_url/$key"
-    ;;
   *)
     echo "Invalid action: $action"
-    echo "Usage: $0 <port> {get|set|del} <key> [value]"
+    echo "Usage: $0 <port> {get|set} <key> [value]"
     exit 1
     ;;
 esac
