@@ -4,3 +4,4 @@
 
 1. [integral](./integral)
 1. [raft](./raft)
+1. [crdt](./crdt)

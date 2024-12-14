@@ -17,5 +17,12 @@ Use `-help` to learn about other arguments.
 Interact with replicas using `./crdtcli`:
 
 ```
-Usage: ./crdtcli <port> {get|set|del} <key> [value]
+Usage: ./crdtcli <port> {get|set|op} <key> [value]
+```
+
+### Tests
+
+Run tests with `./test`:
+```
+Usage: ./test <test-name>
 ```
