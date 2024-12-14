@@ -47,3 +47,18 @@ func (w *HttpApiWebWorker) HandlePut(from gen.PID, writer http.ResponseWriter, r
 	writer.WriteHeader(200)
 	return nil
 }
+
+func (w *HttpApiWebWorker) HandlePost(from gen.PID, writer http.ResponseWriter, request *http.Request) error {
+    // key := request.PathValue("id");
+    var val string
+    json.NewDecoder(request.Body).Decode(&val)
+	w.Log().Info("got HTTP Put for op %s", val)
+    if val == "stopReplication" {
+        Must(w.Send(gen.Atom("crdtactor"), crdtnode.StopReplicationMessage{}))
+    } else if val == "resumeReplication" {
+        Must(w.Send(gen.Atom("crdtactor"), crdtnode.ResumeReplicationMessage{}))
+    }
+
+	writer.WriteHeader(200)
+	return nil
+}

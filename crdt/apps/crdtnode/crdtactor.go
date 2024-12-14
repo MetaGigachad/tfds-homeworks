@@ -28,14 +28,16 @@ type CrdtActor struct {
 	cancelRetry map[CancelFuncKey]gen.CancelFunc
 
 	data map[string]CrdtRowValue
+
+    stopReplication bool
 }
 
 func (a *CrdtActor) Init(args ...any) error {
-	Must(edf.RegisterTypeOf(NodeId(0)))
-	Must(edf.RegisterTypeOf(VectorClock{}))
-	Must(edf.RegisterTypeOf(CrdtRow{}))
-	Must(edf.RegisterTypeOf(NewRowMessage{}))
-	Must(edf.RegisterTypeOf(NewRowAckMessage{}))
+	edf.RegisterTypeOf(NodeId(0))
+	edf.RegisterTypeOf(VectorClock{})
+	edf.RegisterTypeOf(CrdtRow{})
+	edf.RegisterTypeOf(NewRowMessage{})
+	edf.RegisterTypeOf(NewRowAckMessage{})
 	a.clock = make(VectorClock, opt.NodeCount)
 	a.cancelRetry = make(map[CancelFuncKey]gen.CancelFunc)
 	a.data = make(map[string]CrdtRowValue)
@@ -53,6 +55,16 @@ func (a *CrdtActor) HandleMessage(from gen.PID, message any) error {
 		return a.HandleNewRowMessage(&from, &msg)
 	case NewRowAckMessage:
 		return a.HandleNewRowAckMessage(&from, &msg)
+    case StopReplicationMessage:
+        if !a.stopReplication {
+            a.Log().Info("Stopped replication")
+        }
+        a.stopReplication = true
+    case ResumeReplicationMessage:
+        if a.stopReplication {
+            a.Log().Info("Resumed replication")
+        }
+        a.stopReplication = false
 	}
 
 	return nil
@@ -90,10 +102,12 @@ func (a *CrdtActor) HandleNewClientRowMessage(from *gen.PID, message *NewClientR
 }
 
 func (a *CrdtActor) HandleRetryNewRowMessage(from *gen.PID, message *RetryNewRowMessage) error {
-	err := a.Send(a.SelfOnNode(message.To), message.Msg)
-	if err != nil {
-		a.Log().Warning("Retry of NewRowMessage to node %d failed: %s", message.To, err)
-	}
+    if !a.stopReplication {
+        err := a.Send(a.SelfOnNode(message.To), message.Msg)
+        if err != nil {
+            a.Log().Warning("Retry of NewRowMessage to node %d failed: %s", message.To, err)
+        }
+    }
 	a.ScheduleRetry(message.To, &message.Msg)
 	return nil
 }
@@ -142,10 +156,12 @@ func (a *CrdtActor) ApplyNewRow(from NodeId, message *CrdtRow) {
 
 func (a *CrdtActor) ReliableSend(to NodeId, msg *NewRowMessage) {
     a.Log().Info("ReliableSend of new pair %s to %s at %v", msg.Row.Key, msg.Row.Value, msg.Row.Timestamp)
-	err := a.Send(a.SelfOnNode(to), (*msg))
-	if err != nil {
-		a.Log().Warning("Sending NewRowMessage to node %d failed: %s", to, err)
-	}
+    if !a.stopReplication {
+        err := a.Send(a.SelfOnNode(to), (*msg))
+        if err != nil {
+            a.Log().Warning("Sending NewRowMessage to node %d failed: %s", to, err)
+        }
+    }
 	a.ScheduleRetry(to, msg)
 }
 
@@ -180,6 +196,12 @@ type NewRowMessage struct {
 type NewRowAckMessage struct {
 	SelfId int
     From NodeId
+}
+
+type StopReplicationMessage struct {
+}
+
+type ResumeReplicationMessage struct {
 }
 
 type NodeId int

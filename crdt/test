@@ -1,0 +1,114 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <test-name>"
+    exit 1
+fi
+
+log() {
+    echo ">" $@
+}
+
+test_name=$1
+
+node_cmd="go run ./cmd -cookie ccbbaa -node-count 3 -node-id"
+
+bootstrap() {
+    log "Bootstrapping node 1"
+    $node_cmd 1 >/dev/null & pid1=$!
+    sleep 2
+    log "Bootstrapping node 2"
+    $node_cmd 2 >/dev/null & pid2=$!
+    sleep 2
+    log "Bootstrapping node 3"
+    $node_cmd 3 >/dev/null & pid3=$!
+    sleep 2
+    log "Bootstrapped Complete"
+}
+
+cleanup() {
+  log "Cleaning up background processes..."
+  kill 0
+}
+
+trap cleanup EXIT
+
+success=true
+
+assert() {
+  local command="$1"
+  local expected="$2"
+
+  local output
+  output=$($command 2>/dev/null)
+
+  
+  if [[ "$output" != "$expected" ]]; then
+    echo "Assertion failed: Expected '$expected', but got '$output'"
+    success=false
+    return 1
+  fi
+
+  echo "Assertion passed: '$command' output is '$expected'"
+}
+
+
+case "$test_name" in
+    basic)
+        bootstrap
+        assert "./crdtcli 5001 get romgol" "Key not found"
+        assert "./crdtcli 5002 get romgol" "Key not found"
+        assert "./crdtcli 5003 get romgol" "Key not found"
+        ./crdtcli 5001 set romgol danpuz
+        sleep 1
+        assert "./crdtcli 5001 get romgol" '"danpuz"'
+        assert "./crdtcli 5002 get romgol" '"danpuz"'
+        assert "./crdtcli 5003 get romgol" '"danpuz"'
+        ./crdtcli 5002 set romgol danpuz2
+        sleep 1
+        assert "./crdtcli 5001 get romgol" '"danpuz2"'
+        assert "./crdtcli 5002 get romgol" '"danpuz2"'
+        assert "./crdtcli 5003 get romgol" '"danpuz2"'
+        ./crdtcli 5003 set romgol danpuz3
+        sleep 1
+        assert "./crdtcli 5001 get romgol" '"danpuz3"'
+        assert "./crdtcli 5002 get romgol" '"danpuz3"'
+        assert "./crdtcli 5003 get romgol" '"danpuz3"'
+        ;;
+    retries)
+        bootstrap
+        ./crdtcli 5001 op stopReplication
+        ./crdtcli 5001 set romgol danpuz
+        sleep 1
+        assert "./crdtcli 5001 get romgol" '"danpuz"'
+        assert "./crdtcli 5002 get romgol" 'Key not found'
+        assert "./crdtcli 5003 get romgol" 'Key not found'
+        ./crdtcli 5001 op resumeReplication
+        sleep 1
+        assert "./crdtcli 5001 get romgol" '"danpuz"'
+        assert "./crdtcli 5002 get romgol" '"danpuz"'
+        assert "./crdtcli 5003 get romgol" '"danpuz"'
+        ;;
+    conflict) # Lesser node wins
+        bootstrap
+        ./crdtcli 5001 op stopReplication
+        ./crdtcli 5001 set romgol danpuz
+        ./crdtcli 5002 set romgol danpuz2
+        sleep 1
+        assert "./crdtcli 5001 get romgol" '"danpuz"'
+        assert "./crdtcli 5002 get romgol" '"danpuz2"'
+        assert "./crdtcli 5003 get romgol" '"danpuz2"'
+        ./crdtcli 5001 op resumeReplication
+        sleep 1
+        assert "./crdtcli 5001 get romgol" '"danpuz"'
+        assert "./crdtcli 5002 get romgol" '"danpuz"'
+        assert "./crdtcli 5003 get romgol" '"danpuz"'
+        ;;
+    *)
+        echo "Invalid test_name: $test_name"
+        echo "Usage: $0 <test-name>"
+        exit 1
+        ;;
+esac
+
+[[ $success = true ]] && echo "SUCCESS" || echo "FAIL"

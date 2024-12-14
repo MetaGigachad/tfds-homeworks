@@ -32,9 +32,18 @@ case "$action" in
       -H "Content-Type: application/json" \
       -d "\"$value\""
     ;;
+  op)
+    if [ -z "$key" ]; then
+      echo "Usage: $0 <port> op {stopReplication|resumeReplication}"
+      exit 1
+    fi
+    curl -X POST "$base_url/op" \
+      -H "Content-Type: application/json" \
+      -d "\"$key\""
+    ;;
   *)
     echo "Invalid action: $action"
-    echo "Usage: $0 <port> {get|set} <key> [value]"
+    echo "Usage: $0 <port> {get|set|op} <key> [value]"
     exit 1
     ;;
 esac
